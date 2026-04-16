@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 interface IllustrationProps {
   phrase: string;
@@ -10,13 +10,29 @@ interface IllustrationProps {
 const Illustration: React.FC<IllustrationProps> = ({ phrase, pageId }) => {
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
-  // Using version query param to bypass potential browser caching issues during dev
-  const imageUrl = `/book-images/page-${pageId}.png?v=3`;
+  const [candidateIndex, setCandidateIndex] = useState(0);
+
+  const imageCandidates = useMemo(() => {
+    const fallbackMap: Record<number, string[]> = {
+      23: ['/book-images/page-23.png?v=3', '/book-images/page-22-b.jpg?v=3'],
+      27: ['/book-images/page-27.png?v=3', '/book-images/page-25-b.jpg?v=3'],
+      41: ['/book-images/page-41.png?v=3', '/book-images/page-38-b.jpg?v=3'],
+      42: ['/book-images/page-42.png?v=3', '/book-images/page-38-c.jpg?v=3'],
+      44: ['/book-images/page-44.png?v=3', '/book-images/page-45.png?v=3'],
+      69: ['/book-images/page-69.png?v=3', '/book-images/page-62-b.jpg?v=3'],
+      79: ['/book-images/page-79.png?v=3', '/book-images/page-71-b.jpg?v=3'],
+    };
+
+    return fallbackMap[pageId] ?? [`/book-images/page-${pageId}.png?v=3`];
+  }, [pageId]);
+
+  const imageUrl = imageCandidates[candidateIndex] ?? imageCandidates[0];
 
   useEffect(() => {
     // Reset state when page changes
     setImageLoaded(false);
     setError(false);
+    setCandidateIndex(0);
   }, [pageId]);
 
   const handleImageLoad = () => {
@@ -24,6 +40,13 @@ const Illustration: React.FC<IllustrationProps> = ({ phrase, pageId }) => {
   };
 
   const handleImageError = () => {
+    const hasMoreCandidates = candidateIndex < imageCandidates.length - 1;
+
+    if (hasMoreCandidates) {
+      setCandidateIndex(prev => prev + 1);
+      return;
+    }
+
     setError(true);
     setImageLoaded(true); // Stop loading state even if error
   };
